@@ -18,6 +18,9 @@ public class UrlMetaDataService : IUrlMetaDataService
 
   public async Task<UrlMetadataModel> AddUrlMetadata(UrlMetadataModel entity)
   {
+    var existing = await urlRepository.GetUrlMetadata(entity.Url);
+    if (existing != null)
+      return existing;
     return await urlRepository.AddUrlMetadata(entity);
   }
 
