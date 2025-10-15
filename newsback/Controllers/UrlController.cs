@@ -36,5 +36,13 @@ namespace newsback.Controllers
                 return BadRequest($"Error fetching OG data: {ex.Message}");
             }
         }
+
+        [HttpGet("GetAllUrlMetadata")]
+        public async Task<IActionResult> GetAllUrlMetadata()
+        {
+            var result = await urlMetaDataService.GetAllUrlMetadata();
+            return Ok(result);
+        }
+
     }
 }
