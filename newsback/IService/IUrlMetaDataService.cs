@@ -5,7 +5,7 @@ namespace newsback.IService;
 
 public interface IUrlMetaDataService
 {
-  Task<UrlMetadataModel> AddUrlMetadata(UrlMetaDataInsertRequestModel entity);
+  Task<bool> AddUrlMetadata(UrlMetaDataInsertRequestModel entity);
   Task<List<UrlMetadataModel>> GetAllUrlMetadata();
   Task<UrlMetadataModel?> GetUrlMetadata(string url);
   Task<UrlMetadataModel> UpdateMetaData(UrlMetadataModel entity);

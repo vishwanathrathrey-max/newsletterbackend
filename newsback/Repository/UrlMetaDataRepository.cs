@@ -16,14 +16,11 @@ public class UrlMetaDataRepository : IUrlMetaDataRepository
     _db = db;
   }
 
-  public async Task<UrlMetadataModel> AddUrlMetadata(UrlMetadataModel entity)
+  public async Task<bool> AddUrlMetadata(UrlMetadataModel entity)
   {
-    var existing = await _db.UrlMetadatas.FirstOrDefaultAsync(x => x.Url == entity.Url);
-    if (existing != null)
-      return existing;
     _db.UrlMetadatas.Add(entity);
     await _db.SaveChangesAsync();
-    return entity;
+    return true;
   }
 
   public async Task<List<UrlMetadataModel>> GetAllUrlMetadata()

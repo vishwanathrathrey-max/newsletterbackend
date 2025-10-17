@@ -16,11 +16,11 @@ public class UrlMetaDataService : IUrlMetaDataService
     _httpClientFactory = httpClientFactory;
   }
 
-  public async Task<UrlMetadataModel> AddUrlMetadata(UrlMetaDataInsertRequestModel entity)
+  public async Task<bool> AddUrlMetadata(UrlMetaDataInsertRequestModel entity)
   {
     var existing = await _iUrlMetaDataRepository.GetUrlMetadata(entity.Url);
     if (existing != null)
-      return existing;
+      return true;
 
     var metadata = new UrlMetadataModel
     {
