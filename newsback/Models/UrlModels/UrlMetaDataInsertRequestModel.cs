@@ -1,9 +1,8 @@
 using System;
-using System.ComponentModel.DataAnnotations;
 
 namespace newsback.Models.UrlModels;
 
-public class UrlReuestModel
+public class UrlMetaDataInsertRequestModel : UrlResponseModel
 {
   public required string Url { get; set; }
 }

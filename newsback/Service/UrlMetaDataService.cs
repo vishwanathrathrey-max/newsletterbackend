@@ -7,50 +7,54 @@ namespace newsback.Service;
 
 public class UrlMetaDataService : IUrlMetaDataService
 {
-  private readonly IUrlMetaDataRepository urlRepository;
-  private readonly HttpClient httpClient;
+  private readonly IUrlMetaDataRepository _iUrlMetaDataRepository;
+  private readonly IHttpClientFactory _httpClientFactory;
 
-  public UrlMetaDataService(IUrlMetaDataRepository repository, HttpClient _httpClient)
+  public UrlMetaDataService(IUrlMetaDataRepository iUrlMetaDataRepository, IHttpClientFactory httpClientFactory)
   {
-    urlRepository = repository;
-    httpClient = _httpClient;
+    _iUrlMetaDataRepository = iUrlMetaDataRepository;
+    _httpClientFactory = httpClientFactory;
   }
 
-  public async Task<UrlMetadataModel> AddUrlMetadata(UrlMetadataModel entity)
+  public async Task<UrlMetadataModel> AddUrlMetadata(UrlMetaDataInsertRequestModel entity)
   {
-    var existing = await urlRepository.GetUrlMetadata(entity.Url);
+    var existing = await _iUrlMetaDataRepository.GetUrlMetadata(entity.Url);
     if (existing != null)
       return existing;
-    return await urlRepository.AddUrlMetadata(entity);
+
+    var metadata = new UrlMetadataModel
+    {
+      Url = entity.Url,
+      Title = entity.Title,
+      Description = entity.Description,
+      Image = entity.Image,
+      RetrievedAt = DateTime.UtcNow
+    };
+    return await _iUrlMetaDataRepository.AddUrlMetadata(metadata);
   }
 
-  public Task<List<UrlMetadataModel>> GetAllUrlMetadata()
+  public async Task<List<UrlMetadataModel>> GetAllUrlMetadata()
   {
-    return urlRepository.GetAllUrlMetadata();
+    return await _iUrlMetaDataRepository.GetAllUrlMetadata();
   }
 
-  public Task<UrlMetadataModel?> GetUrlMetadata(string url)
+  public async Task<UrlMetadataModel?> GetUrlMetadata(string url)
   {
-    return urlRepository.GetUrlMetadata(url);
+    return await _iUrlMetaDataRepository.GetUrlMetadata(url);
   }
 
-  public Task<UrlMetadataModel> UpdateMetaData(UrlMetadataModel entity)
+  public async Task<UrlMetadataModel> UpdateMetaData(UrlMetadataModel entity)
   {
-    return urlRepository.UpdateMetaData(entity);
+    return await _iUrlMetaDataRepository.UpdateMetaData(entity);
   }
 
-  public async Task<UrlResponseModel> FetchAndSaveOpenGraphData(string url)
+  public async Task<UrlResponseModel> GetOpenGrapParameters(string url)
   {
     if (!Uri.TryCreate(url, UriKind.Absolute, out var validatedUrl))
       throw new ArgumentException("Invalid URL format.");
 
-    using var handler = new HttpClientHandler { AllowAutoRedirect = true };
-    using var httpClient = new HttpClient(handler);
-    httpClient.DefaultRequestHeaders.UserAgent.ParseAdd(
-        "Mozilla/5.0 (Windows NT 10.0; Win64; x64)"
-    );
+    var httpClient = _httpClientFactory.CreateClient("OpenGraphClient");
 
-    // Fetch HTML
     var response = await httpClient.GetAsync(validatedUrl);
     if (!response.IsSuccessStatusCode)
       throw new InvalidOperationException("Unable to fetch URL");
@@ -59,22 +63,17 @@ public class UrlMetaDataService : IUrlMetaDataService
     var doc = new HtmlAgilityPack.HtmlDocument();
     doc.LoadHtml(html);
 
-    // Helper function
     string GetMetaContent(string property, string fallback = "")
     {
       var node = doc.DocumentNode.SelectSingleNode(
           $"//meta[@property='{property}'] | //meta[@name='{property}']"
       );
-      return string.IsNullOrWhiteSpace(node?.GetAttributeValue("content", ""))
-          ? fallback
-          : node.GetAttributeValue("content", "");
+      return string.IsNullOrWhiteSpace(node?.GetAttributeValue("content", "")) ? fallback : node.GetAttributeValue("content", "");
     }
 
     string title = GetMetaContent("og:title");
     if (string.IsNullOrWhiteSpace(title))
-    {
       title = doc.DocumentNode.SelectSingleNode("//title")?.InnerText ?? "Untitled";
-    }
 
     string description = GetMetaContent("og:description");
     if (string.IsNullOrWhiteSpace(description))
@@ -91,9 +90,8 @@ public class UrlMetaDataService : IUrlMetaDataService
 
     string imageUrl = GetMetaContent("og:image") ?? "";
     if (string.IsNullOrWhiteSpace(imageUrl))
-    {
       imageUrl = $"{validatedUrl.Scheme}://{validatedUrl.Host}/favicon.ico";
-    }
+
     if (!string.IsNullOrEmpty(imageUrl) && !imageUrl.StartsWith("http"))
     {
       var baseUri = new Uri(url);
@@ -101,37 +99,12 @@ public class UrlMetaDataService : IUrlMetaDataService
       imageUrl = $"{baseUri.Scheme}://{baseUri.Host}{imageUrl}";
     }
 
-    // Check existing
-    var existing = await GetUrlMetadata(validatedUrl.ToString());
-    UrlMetadataModel entity;
-
-    if (existing != null)
-    {
-      existing.Title = GetMetaContent("og:title") ?? "";
-      existing.Description = GetMetaContent("og:description") ?? "";
-      existing.Image = imageUrl;
-      existing.RetrievedAt = DateTime.UtcNow;
-
-      entity = await UpdateMetaData(existing);
-    }
-    else
-    {
-      entity = new UrlMetadataModel
-      {
-        Url = validatedUrl.ToString(),
-        Title = GetMetaContent("og:title") ?? "",
-        Description = GetMetaContent("og:description") ?? "",
-        Image = imageUrl,
-        RetrievedAt = DateTime.UtcNow
-      };
-      entity = await AddUrlMetadata(entity);
-    }
-
     return new UrlResponseModel
     {
-      Title = entity.Title,
-      Description = entity.Description,
-      Image = entity.Image
+      Title = title,
+      Description = description,
+      Image = imageUrl
     };
   }
+
 }

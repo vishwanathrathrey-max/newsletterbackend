@@ -1,4 +1,6 @@
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Options;
+using newsback.Configurations;
 using newsback.Data;
 using newsback.IRepository;
 using newsback.IService;
@@ -30,13 +32,28 @@ builder.Services.AddScoped<IUrlMetaDataRepository, UrlMetaDataRepository>();
 // Required for HttpClientFactory
 builder.Services.AddHttpClient();
 
+// Configure HttpClientSettings from appsettings.json
+builder.Services.Configure<HttpClientSettings>(
+    builder.Configuration.GetSection("HttpClientSettings"));
+
+builder.Services.AddHttpClient("OpenGraphClient", (sp, client) =>
+{
+    var settings = sp.GetRequiredService<IOptions<HttpClientSettings>>().Value;
+    client.DefaultRequestHeaders.UserAgent.ParseAdd(settings.DefaultUserAgent);
+});
+
+
 // Required for Swagger
 builder.Services.AddEndpointsApiExplorer();
-builder.Services.AddSwaggerGen();
+builder.Services.AddSwaggerGen(c =>
+{
+    c.SwaggerDoc("v1", new Microsoft.OpenApi.Models.OpenApiInfo
+    {
+        Title = "Newsletter API",
+        Version = "v1",
+    });
+});
 
-
-// Add OpenAPI services
-builder.Services.AddOpenApi();
 
 // Build the app
 var app = builder.Build();
@@ -44,17 +61,11 @@ var app = builder.Build();
 // Configure the HTTP request pipeline
 if (app.Environment.IsDevelopment())
 {
-    app.MapOpenApi();
-    app.UseSwagger(); // Generates /openapi/v1.json
-
-    // Serve Swagger UI
+    app.UseSwagger();
     app.UseSwaggerUI(c =>
     {
-        // Link the JSON to the UI
-        c.SwaggerEndpoint("/openapi/v1.json", "Employee API v1");
-
-        // Optional: serve UI at /openapi
-        c.RoutePrefix = "openapi";
+        c.SwaggerEndpoint("/swagger/v1/swagger.json", "Newsletter API V1");
+        c.RoutePrefix = "swagger";
     });
 }
 

@@ -11,24 +11,21 @@ namespace newsback.Controllers
     public class UrlController : ControllerBase
     {
         private readonly HttpClient _httpClient;
-        private readonly IUrlMetaDataService urlMetaDataService;
+        private readonly IUrlMetaDataService _iUrlMetaDataService;
 
-        public UrlController(IHttpClientFactory httpClientFactory, IUrlMetaDataService _urlMetaDataService)
+        public UrlController(IHttpClientFactory httpClientFactory, IUrlMetaDataService iUrlMetaDataService)
         {
             _httpClient = httpClientFactory.CreateClient();
-            urlMetaDataService = _urlMetaDataService;
+            _iUrlMetaDataService = iUrlMetaDataService;
         }
 
 
         [HttpPost("GetOpenGrapParameters")]
-        public async Task<IActionResult> GetOpenGraphData([FromBody] UrlReuestModel request)
+        public async Task<IActionResult> GetOpenGrapParameters([FromBody] UrlReuestModel request)
         {
-            if (!ModelState.IsValid)
-                return BadRequest(ModelState);
-
             try
             {
-                var result = await urlMetaDataService.FetchAndSaveOpenGraphData(request.Url);
+                var result = await _iUrlMetaDataService.GetOpenGrapParameters(request.Url);
                 return Ok(result);
             }
             catch (Exception ex)
@@ -40,9 +37,15 @@ namespace newsback.Controllers
         [HttpGet("GetAllUrlMetadata")]
         public async Task<IActionResult> GetAllUrlMetadata()
         {
-            var result = await urlMetaDataService.GetAllUrlMetadata();
+            var result = await _iUrlMetaDataService.GetAllUrlMetadata();
             return Ok(result);
         }
 
+        [HttpPost("AddUrlMetadata")]
+        public async Task<IActionResult> AddUrlMetadata([FromBody] UrlMetaDataInsertRequestModel model)
+        {
+            var result = await _iUrlMetaDataService.AddUrlMetadata(model);
+            return Ok(result);
+        }
     }
 }
